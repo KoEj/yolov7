@@ -33,3 +33,12 @@ If you use this data for your research, please cite our [paper](https://arxiv.or
   copyright = {arXiv.org perpetual, non-exclusive license}
 }
 ```
+
+
+Download from GDrive
+pip install gdown
+
+gdown --id 1hgQkvMLWEk12lQ7hxAg4XQQywvHGtGmU
+
+---------------- URL
+https://drive.google.com/file/d/1hgQkvMLWEk12lQ7hxAg4XQQywvHGtGmU/view?usp=share_link
