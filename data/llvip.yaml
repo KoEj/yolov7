@@ -2,16 +2,16 @@
 
 # train, val, and test data as 1) directory: path/images/, 2) file: path/images.txt, or 3) list: [path1/images/, path2/images/]
 train: 
-  - ./visible_train.txt  # Visible images for training
-  - ./infrared_train.txt  # Infrared images for training
+  - ./llvip./visible_train.txt  # Visible images for training
+  - ./llvip./infrared_train.txt  # Infrared images for training
 
 val: 
-  - ./visible_val.txt  # Visible images for validation
-  - ./infrared_val.txt  # Infrared images for validation
+  - ./llvip/visible_val.txt  # Visible images for validation
+  - ./llvip/infrared_val.txt  # Infrared images for validation
 
 test: 
-  - ./visible_test.txt  # Visible images for testing
-  - ./infrared_test.txt  # Infrared images for testing
+  - ./llvip/visible_test.txt  # Visible images for testing
+  - ./llvip/infrared_test.txt  # Infrared images for testing
 
 # number of classes
 nc: 1
