@@ -38,7 +38,7 @@ If you use this data for your research, please cite our [paper](https://arxiv.or
 Download from GDrive
 pip install gdown
 
-gdown --id 1hgQkvMLWEk12lQ7hxAg4XQQywvHGtGmU
+gdown --id 15-a0CfopEtp9KAsK8DT0Ko9BeeHLtpdi
 
 ---------------- URL
-https://drive.google.com/file/d/1hgQkvMLWEk12lQ7hxAg4XQQywvHGtGmU/view?usp=share_link
+https://drive.google.com/file/d/15-a0CfopEtp9KAsK8DT0Ko9BeeHLtpdi/view?usp=drive_link
