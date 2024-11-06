@@ -5,35 +5,30 @@ from pathlib import Path
 import xml.etree.ElementTree as ET
 
 # Paths definition
-base_dir = Path('./')  # Update to your base directory
+base_dir = Path('./')
 annotations_dir = base_dir / 'Annotations'
 visible_dir = base_dir / 'visible'
 infrared_dir = base_dir / 'infrared'
-yolo_labels_dir = base_dir / 'labels'  # Directory to store YOLO format labels
-output_txt_dir = base_dir  # Output directory for train.txt, val.txt, test.txt
+yolo_labels_dir = base_dir / 'labels' 
+output_txt_dir = base_dir
 
-# Ensure YOLO labels directory exists
-yolo_labels_dir.mkdir(parents=True, exist_ok=True)
-
-# Create directories for train, val, and test splits for both visible and infrared images
 for split in ['train', 'val', 'test']:
-    for image_dir in [visible_dir / split, infrared_dir / split]:
-        if image_dir.exists():
-            shutil.rmtree(image_dir)  # Clear previous split directories
-        image_dir.mkdir(parents=True, exist_ok=True)
+    (yolo_labels_dir / split).mkdir(parents=True, exist_ok=True)
+    (visible_dir / split).mkdir(parents=True, exist_ok=True)
+    (infrared_dir / split).mkdir(parents=True, exist_ok=True)
 
-# Parameters for the split
 train_ratio = 0.7
 val_ratio = 0.15
 test_ratio = 0.15
 
-# Step 1: Split images into train, val, and test without overlap
-def split_images(image_dir, train_ratio, val_ratio, test_ratio):
-    image_files = sorted(list(image_dir.rglob('*.jpg')))
-    if not image_files:
-        print(f"No images found in {image_dir}. Please check the directory path.")
-        return [], [], []
+all_visible_images = sorted(list(visible_dir.rglob('*.jpg')))
+if not all_visible_images:
+    print(f"No images found in {visible_dir}. Please check the directory path.")
+else:
+    print(f"Found {len(all_visible_images)} images in {visible_dir}.")
 
+# Step 1: Split images based on visible images
+def split_images(image_files, train_ratio, val_ratio, test_ratio):
     random.shuffle(image_files)
     train_count = int(len(image_files) * train_ratio)
     val_count = int(len(image_files) * val_ratio)
@@ -44,33 +39,9 @@ def split_images(image_dir, train_ratio, val_ratio, test_ratio):
 
     return train_files, val_files, test_files
 
-# Split visible and infrared images independently
-visible_train, visible_val, visible_test = split_images(visible_dir, train_ratio, val_ratio, test_ratio)
-infrared_train, infrared_val, infrared_test = split_images(infrared_dir, train_ratio, val_ratio, test_ratio)
+visible_train, visible_val, visible_test = split_images(all_visible_images, train_ratio, val_ratio, test_ratio)
 
-# Ensure directories for train, val, and test exist without deleting contents
-for split in ['train', 'val', 'test']:
-    (visible_dir / split).mkdir(parents=True, exist_ok=True)
-    (infrared_dir / split).mkdir(parents=True, exist_ok=True)
-
-#  Move files to respective directories
-def move_files(files, split_dir):
-    for file in files:
-        dest = split_dir / file.name
-        if not dest.exists():
-            shutil.move(file, dest)
-
-# Move files for visible and infrared sets
-move_files(visible_train, visible_dir / 'train')
-move_files(visible_val, visible_dir / 'val')
-move_files(visible_test, visible_dir / 'test')
-
-move_files(infrared_train, infrared_dir / 'train')
-move_files(infrared_val, infrared_dir / 'val')
-move_files(infrared_test, infrared_dir / 'test')
-
-
-# Step 2: Convert VOC annotations to YOLO format
+# Step 2: Move visible and infrared images based on matching file names and generate labels
 classes = ['person']
 
 def convert_voc_to_yolo(voc_file, yolo_file, classes):
@@ -100,10 +71,35 @@ def convert_voc_to_yolo(voc_file, yolo_file, classes):
 
             f.write(f"{cls_id} {x_center:.6f} {y_center:.6f} {width:.6f} {height:.6f}\n")
 
-for xml_file in annotations_dir.glob('*.xml'):
-    yolo_label_path = yolo_labels_dir / f"{xml_file.stem}.txt"
-    convert_voc_to_yolo(xml_file, yolo_label_path, classes)
+def find_infrared_file(filename):
+    for split in ['train', 'val', 'test']:
+        infrared_path = infrared_dir / split / filename
+        if infrared_path.exists():
+            return infrared_path
+    return None
 
+def process_split(visible_files, split_name):
+    for file in visible_files:
+        visible_dest = visible_dir / split_name / file.name
+        infrared_source = find_infrared_file(file.name)
+        split_infrared_dest = infrared_dir / split_name / file.name
+        label_dest = yolo_labels_dir / split_name / f"{file.stem}.txt"
+
+        if not visible_dest.exists():
+            shutil.move(file, visible_dest)
+
+        if infrared_source and not split_infrared_dest.exists():
+            shutil.move(infrared_source, split_infrared_dest)
+        elif not infrared_source:
+            print(f"Warning: Matching infrared image for {file.name} not found in any infrared split folder.")
+
+        annotation_file = annotations_dir / f"{file.stem}.xml"
+        if annotation_file.exists():
+            convert_voc_to_yolo(annotation_file, label_dest, classes)
+
+process_split(visible_train, 'train')
+process_split(visible_val, 'val')
+process_split(visible_test, 'test')
 
 # Step 3: Create train.txt, val.txt, and test.txt with relative paths
 def create_image_list_file(image_files, output_file):
@@ -113,19 +109,19 @@ def create_image_list_file(image_files, output_file):
             f.write(f"./{relative_path}\n")
     print(f"{output_file} created.")
 
-# Visible
-train_visible_files = list((visible_dir / 'train').glob('*.jpg'))
-val_visible_files = list((visible_dir / 'val').glob('*.jpg'))
-test_visible_files = list((visible_dir / 'test').glob('*.jpg'))
+# Collect images for each split and write to list files
+train_visible_files = list((visible_dir / 'train').rglob('*.jpg'))
+val_visible_files = list((visible_dir / 'val').rglob('*.jpg'))
+test_visible_files = list((visible_dir / 'test').rglob('*.jpg'))
 
 create_image_list_file(train_visible_files, output_txt_dir / 'visible_train.txt')
 create_image_list_file(val_visible_files, output_txt_dir / 'visible_val.txt')
 create_image_list_file(test_visible_files, output_txt_dir / 'visible_test.txt')
 
-# Infrared
-train_infrared_files = list((infrared_dir / 'train').glob('*.jpg'))
-val_infrared_files = list((infrared_dir / 'val').glob('*.jpg'))
-test_infrared_files = list((infrared_dir / 'test').glob('*.jpg'))
+# Same for infrared images
+train_infrared_files = list((infrared_dir / 'train').rglob('*.jpg'))
+val_infrared_files = list((infrared_dir / 'val').rglob('*.jpg'))
+test_infrared_files = list((infrared_dir / 'test').rglob('*.jpg'))
 
 create_image_list_file(train_infrared_files, output_txt_dir / 'infrared_train.txt')
 create_image_list_file(val_infrared_files, output_txt_dir / 'infrared_val.txt')
