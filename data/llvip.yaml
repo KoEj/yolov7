@@ -2,8 +2,8 @@
 
 # train, val, and test data as 1) directory: path/images/, 2) file: path/images.txt, or 3) list: [path1/images/, path2/images/]
 train: 
-  - ./llvip./visible_train.txt  # Visible images for training
-  - ./llvip./infrared_train.txt  # Infrared images for training
+  - ./llvip/visible_train.txt  # Visible images for training
+  - ./llvip/infrared_train.txt  # Infrared images for training
 
 val: 
   - ./llvip/visible_val.txt  # Visible images for validation
