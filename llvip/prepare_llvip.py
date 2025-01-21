@@ -3,6 +3,8 @@ import random
 import shutil
 from pathlib import Path
 import xml.etree.ElementTree as ET
+import cv2
+import numpy as np
 
 # Paths definition
 base_dir = Path('./')
@@ -78,30 +80,55 @@ def find_infrared_file(filename):
             return infrared_path
     return None
 
-def process_split(visible_files, split_name):
+# Step 3: Add fusion methods
+# Function for direct stacking (channel-wise concatenation)
+def direct_stacking(rgb_image, ir_image):
+    ir_image_resized = cv2.resize(ir_image, (rgb_image.shape[1], rgb_image.shape[0]))
+    stacked_image = np.dstack((rgb_image, ir_image_resized))
+    return stacked_image
+
+# Function for weighted sum fusion
+def weighted_sum_fusion(rgb_image, ir_image, alpha=0.7, beta=0.3):
+    ir_image_resized = cv2.resize(ir_image, (rgb_image.shape[1], rgb_image.shape[0]))
+    ir_image_resized = cv2.normalize(ir_image_resized, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+    fused_image = cv2.addWeighted(rgb_image, alpha, cv2.cvtColor(ir_image_resized, cv2.COLOR_GRAY2BGR), beta, 0)
+    return fused_image
+
+# Step 4: Process splits with fusion
+def process_split_with_fusion(visible_files, split_name, fusion_method='stacking'):
     for file in visible_files:
         visible_dest = visible_dir / split_name / file.name
         infrared_source = find_infrared_file(file.name)
-        split_infrared_dest = infrared_dir / split_name / file.name
+        fused_dest = visible_dir / split_name / f"{file.stem}_fused.jpg"
         label_dest = yolo_labels_dir / split_name / f"{file.stem}.txt"
 
         if not visible_dest.exists():
             shutil.move(file, visible_dest)
 
-        if infrared_source and not split_infrared_dest.exists():
-            shutil.move(infrared_source, split_infrared_dest)
-        elif not infrared_source:
-            print(f"Warning: Matching infrared image for {file.name} not found in any infrared split folder.")
+        if infrared_source:
+            ir_image = cv2.imread(str(infrared_source), cv2.IMREAD_GRAYSCALE)
+            rgb_image = cv2.imread(str(visible_dest))
+
+            if fusion_method == 'stacking':
+                fused_image = direct_stacking(rgb_image, ir_image)
+            elif fusion_method == 'weighted_sum':
+                fused_image = weighted_sum_fusion(rgb_image, ir_image)
+
+            cv2.imwrite(str(fused_dest), fused_image)
+
+            split_infrared_dest = infrared_dir / split_name / file.name
+            if not split_infrared_dest.exists():
+                shutil.move(infrared_source, split_infrared_dest)
 
         annotation_file = annotations_dir / f"{file.stem}.xml"
         if annotation_file.exists():
             convert_voc_to_yolo(annotation_file, label_dest, classes)
 
-process_split(visible_train, 'train')
-process_split(visible_val, 'val')
-process_split(visible_test, 'test')
+process_split_with_fusion(visible_train, 'train', fusion_method='stacking')
+process_split_with_fusion(visible_val, 'val', fusion_method='stacking')
+process_split_with_fusion(visible_test, 'test', fusion_method='stacking')
 
-# Step 3: Create train.txt, val.txt, and test.txt with relative paths
+# Step 5: Create train.txt, val.txt, and test.txt with relative paths
 def create_image_list_file(image_files, output_file):
     with open(output_file, 'w') as f:
         for img in image_files:

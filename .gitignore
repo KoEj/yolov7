@@ -44,6 +44,8 @@ VOC/
 llvip/labels
 llvip/Annotations/
 llvip/*.cache
+llvip/*.txt
+llvip/original_labels/
 
 coco2017labels-segments.zip
 test2017.zip

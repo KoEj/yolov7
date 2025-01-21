@@ -1,0 +1,14 @@
+# LLVIP dataset configuration for YOLOv7
+
+# train, val, and test data as 1) directory: path/images/, 2) file: path/images.txt, or 3) list: [path1/images/, path2/images/]
+train: ./images/train/  # Visible images for training
+
+val: ./images/val/  # Visible images for validation
+
+test: ./images/test/ # Visible images for testing
+
+# number of classes
+nc: 1
+
+# class names
+names: ['person']
